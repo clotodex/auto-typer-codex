@@ -97,14 +97,14 @@ def has_return_statement(function_node, tree):
     """
     Returns true if the function body has a return or yield statement.
     """
+    if function_node.end_lineno is None:
+        print(colored("WARNING: function body is empty", "red"))
+        return False
     for node in ast.walk(tree):
         if isinstance(node, ast.Return) or isinstance(node, ast.Yield):
             # checks if line number is in bounds of the function body
-            return (
-                function_node.body[0].lineno
-                <= node.lineno
-                <= function_node.body[-1].lineno
-            )
+            if function_node.body[0].lineno <= node.lineno <= function_node.end_lineno:
+                return True
     return False
 
 
@@ -286,7 +286,9 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
             prep_function_def = prep_function_def_from_node_for_return(
                 function_range.node
             )
-            # prep_function_def = ast.unparse(function_range.node).strip().rstrip(':') + " ->"
+        else:
+            print(colored(f"unhandled typedness {function_node.typedness}", "red"))
+            continue
 
         print(prep_function_def, end="")
         prepped = prep_file(
