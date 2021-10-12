@@ -6,14 +6,14 @@ Given a python file, this script finds all ranges of line nummbers of function s
 
 import argparse
 import ast
-import sys
 import os
-
+import sys
 from collections import namedtuple
 from enum import Enum
-from termcolor import colored
 from typing import Optional
+
 import openai
+from termcolor import colored
 
 USE_STREAM_FEATURE = True
 MAX_TOKENS_DEFAULT = 64
@@ -100,9 +100,11 @@ def has_return_statement(function_node, tree):
     for node in ast.walk(tree):
         if isinstance(node, ast.Return) or isinstance(node, ast.Yield):
             # checks if line number is in bounds of the function body
-            return function_node.body[0].lineno <= node.lineno <= function_node.body[
-                -1
-            ].lineno
+            return (
+                function_node.body[0].lineno
+                <= node.lineno
+                <= function_node.body[-1].lineno
+            )
     return False
 
 
