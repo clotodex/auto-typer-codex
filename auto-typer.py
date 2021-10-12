@@ -98,7 +98,7 @@ def has_return_statement(function_node, tree):
     Returns true if the function body has a return or yield statement.
     """
     if function_node.end_lineno is None:
-        print(colored("WARNING: function body is empty", "red"))
+        print(colored("WARNING: function body is probably empty", "red"))
         return False
     for node in ast.walk(tree):
         if isinstance(node, ast.Return) or isinstance(node, ast.Yield):
@@ -207,12 +207,12 @@ def prep_file(content, function_range, prep_function_def, first_import_line):
     if first_import_line is None:
         lines = typing_import + lines
     else:
+        assert first_import_line < function_range.start
         lines = (
             lines[: first_import_line - 1]
             + typing_import
             + lines[first_import_line - 1 :]
         )
-    assert first_import_line < function_range.start
     cut_lines = lines[function_range.end + 1 :] + ["\n"] + lines[: function_range.start]
     cut_lines.append(prep_function_def)
     return "".join(cut_lines)
