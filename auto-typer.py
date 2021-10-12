@@ -258,7 +258,7 @@ def complete(prompt: str) -> str:
     # return " DummyType,\nvar2: type2) -> returntype:"
 
 
-def auto_typing(path, naming_scheme, naming_format):
+def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
     # find all function defitions
     # for every definition:
     #   prep_file as prompt
@@ -325,11 +325,11 @@ def auto_typing(path, naming_scheme, naming_format):
 
         print()
 
-    # write to file depending on naming_scheme
-    if naming_scheme == "inplace":
+    # write to file depending args
+    if inplace:
         with open(path, "w") as f:
             f.write("".join(lines))
-    elif naming_scheme == "format":
+    else:
         # apply format only to the file, not the folder
         filename = os.path.basename(path)
         # applies format (only uses ext if it exists)
@@ -365,17 +365,16 @@ def main():
     parser.add_argument(
         "path", type=str, help="path to python file or a folder of python files"
     )
-    # naming scheme is where to write the output to. Options enforced by argparse: inplace, format
     parser.add_argument(
-        "--naming-scheme",
-        choices=["inplace", "format"],
-        default="format",
-        help="inplace will override the input file, format allows to use filename and ext as variables in {}. e.g. folderpath/ {filename}_typed{ext}",
+        "--inplace",
+        action="store_true",
+        help="edit the file in-place instead of creating a new file",
     )
     parser.add_argument(
         "--format",
+        type=str,
         default="{filename}_typed.{ext}",
-        help="format for the naming scheme. See help for --naming-scheme",
+        help="format for the new file (default: {filename}_typed.{ext})",
     )
     args = parser.parse_args()
 
@@ -386,7 +385,7 @@ def main():
                     path = os.path.join(root, file)
                     auto_typing(path, args.naming_scheme, args.format)
     else:
-        auto_typing(args.path, args.naming_scheme, args.format)
+        auto_typing(args.path, args.inplace, args.format)
 
 
 if __name__ == "__main__":
