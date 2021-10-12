@@ -12,7 +12,7 @@ import sys
 import tokenize
 from collections import namedtuple
 from enum import Enum
-from typing import Optional
+from typing import *
 
 import openai
 from termcolor import colored
@@ -50,7 +50,9 @@ def find_first_import(file_path: str) -> Optional[int]:
     return first_import
 
 
-def get_typed_function_ranges(file_path: str):
+def get_typed_function_ranges(
+    file_path: str,
+) -> Generator[TypedFunctionRange, None, None]:
     """
     Returns a boolean list. For every function range, tests if it is fully typed using ast.
     Gets the line number where the function signature starts (def ...)
@@ -107,7 +109,7 @@ def get_typed_function_ranges(file_path: str):
             )
 
 
-def get_function_typedness(function_node, tree):
+def get_function_typedness(function_node: ast.FunctionDef, tree: ast.AST) -> Typedness:
     """
     Returns a Typedness enum indicating the type of the function.
     No args - if at least one argument does not have a type annotation
@@ -124,14 +126,14 @@ def get_function_typedness(function_node, tree):
     return Typedness.fully
 
 
-def has_return_type(function_node, tree):
+def has_return_type(function_node: ast.FunctionDef, tree: ast.AST) -> bool:
     """
     Returns true if the function has a return type annotation (function_node.returns).
     """
     return function_node.returns is not None
 
 
-def has_return_statement(function_node, tree):
+def has_return_statement(function_node: ast.FunctionDef, tree: ast.AST) -> bool:
     """
     Returns true if the function body has a return or yield statement.
     """
@@ -156,7 +158,7 @@ def all_args_have_type(function_node: ast.FunctionDef, tree: ast.AST) -> bool:
     return True
 
 
-def print_function_range_and_def(path, function_range: TypedFunctionRange):
+def print_function_range_and_def(path: str, function_range: TypedFunctionRange):
     """
     Prints a function definition in a nice format (typed if it has type annotations).
     def fun(var):
@@ -216,7 +218,7 @@ def subscript_type_to_string(subscript: ast.Subscript) -> str:
     return ast.unparse(subscript)
 
 
-def prep_function_def_from_node(function_node):
+def prep_function_def_from_node(function_node: ast.FunctionDef) -> str:
     """
     Returns a string representation of the function definition in this format:
         def functionname(firstarg:
@@ -224,14 +226,19 @@ def prep_function_def_from_node(function_node):
     return "def " + function_node.name + "(" + function_node.args.args[0].arg + ":"
 
 
-def prep_function_def_from_node_for_return(function_node):
+def prep_function_def_from_node_for_return(function_node: ast.FunctionDef) -> str:
     """
     Returns a string representation of the function definition with an empty return type
     """
     return "def " + function_node.name + "(" + ast.unparse(function_node.args) + ") ->"
 
 
-def prep_file(content, function_range, prep_function_def, first_import_line):
+def prep_file(
+    content: str,
+    function_range: TypedFunctionRange,
+    prep_function_def: str,
+    first_import_line: int,
+) -> str:
     """
     Add from typing import * on top of the first line of the imports
     Cuts the function_range from the file content
@@ -256,7 +263,7 @@ def prep_file(content, function_range, prep_function_def, first_import_line):
     return "".join(cut_lines)
 
 
-def shorten_file_by_removing_comments(content):
+def shorten_file_by_removing_comments(content: str) -> str:
     """
     Removes all lines with line comments or block comments from the file content, so that the ast parser does not get confused.
     """
@@ -295,7 +302,7 @@ def complete(prompt: str) -> str:
     return completion
 
 
-def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
+def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
 
     # prints a beautiful divider with the file name
     print(colored("-" * len(os.path.basename(path)), "blue"))
@@ -417,7 +424,7 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
             f.write("".join(lines))
 
 
-def try_complete_or_shorten(prompt):
+def try_complete_or_shorten(prompt: str) -> str:
     """
     Tries to complete the prompt using OpenAI's CODEX API
     If that fails, it shortens the prompt by using `shorten_file_by_removing_comments` and tries again
