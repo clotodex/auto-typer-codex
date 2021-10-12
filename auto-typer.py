@@ -383,7 +383,7 @@ def main():
             for file in files:
                 if file.endswith(".py"):
                     path = os.path.join(root, file)
-                    auto_typing(path, args.naming_scheme, args.format)
+                    auto_typing(path, args.inplace, args.format)
     else:
         auto_typing(args.path, args.inplace, args.format)
 
