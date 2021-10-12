@@ -51,7 +51,7 @@ def find_first_import(file_path: str) -> Optional[int]:
 
 
 def get_typed_function_ranges(
-    file_path: str,
+    source: str,
 ) -> Generator[TypedFunctionRange, None, None]:
     """
     Returns a boolean list. For every function range, tests if it is fully typed using ast.
@@ -59,10 +59,8 @@ def get_typed_function_ranges(
     and the line number where the signature ends (...:)
     Uses ast and tokenize to find only lines of the function definition (no empty lines or comment lines)
     """
-    with open(file_path) as f:
-        source = f.read()
 
-    tree = ast.parse(source, file_path)
+    tree = ast.parse(source)
 
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.FunctionDef):
@@ -319,7 +317,7 @@ def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
     offset = 0
 
     changed_the_file = False
-    for function_range in get_typed_function_ranges(path):
+    for function_range in get_typed_function_ranges(content):
         print_function_range_and_def(path, function_range)
         if function_range.typedness not in [Typedness.no_return, Typedness.no_args]:
             print(colored("skip", "grey"))

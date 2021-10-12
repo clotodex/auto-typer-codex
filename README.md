@@ -109,9 +109,10 @@ Open an [pull request](https://github.com/clotodex/auto-typer-codex/pulls) if yo
 
 ### Tests
 
+- [x] find all functions and their typedness
+- [x] mutliline function definition
 - [ ] type args
 - [ ] type return
-- [ ] mutliline function definition
 - [ ] commented lines before function body
 - [ ] doccomment before function body
 - [ ] empty lines before function body
