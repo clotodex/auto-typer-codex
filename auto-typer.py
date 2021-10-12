@@ -69,7 +69,6 @@ def get_typed_function_ranges(file_path: str):
             end = node.body[0].lineno - 1
             # going through tokenlist in reverse skipping all newlines, comments, etc and stopping when finding ':'
             fundef_str = "".join(source.splitlines(keepends=True)[start - 1 : end])
-            print(fundef_str)
             for tokeninfo in reversed(
                 list(tokenize.tokenize(io.BytesIO(fundef_str.encode("utf-8")).readline))
             ):
@@ -297,6 +296,13 @@ def complete(prompt: str) -> str:
 
 
 def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
+
+    # prints a beautiful divider with the file name
+    print(colored("-" * len(os.path.basename(path)), "blue"))
+    print(colored(os.path.basename(path), "blue"))
+    print(colored("-" * len(os.path.basename(path)), "blue"))
+    print()
+
     with open(path) as f:
         content = f.read()
 
@@ -305,6 +311,7 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
     lines = content.splitlines(keepends=True)
     offset = 0
 
+    changed_the_file = False
     for function_range in get_typed_function_ranges(path):
         print_function_range_and_def(path, function_range)
         if function_range.typedness not in [Typedness.no_return, Typedness.no_args]:
@@ -351,6 +358,10 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
             )
 
         print()
+        changed_the_file = True
+
+    if not changed_the_file:
+        return
 
     # autocompletes typing import
     try:
@@ -364,7 +375,6 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
     tree = ast.parse(content, path)
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            print(ast.dump(node))
             name = node.names[0].name.split(".")[0]
         elif isinstance(node, ast.ImportFrom):
             name = node.module.split(".")[0]
@@ -384,6 +394,11 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
             + ["from typing import", import_completion, "\n"]
             + lines[first_import_line - 1 :]
         )
+    print(
+        "Added import '"
+        + colored(f"from typing import{import_completion}", "green")
+        + "'"
+    )
 
     # write to file depending args
     if inplace:
