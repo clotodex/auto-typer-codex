@@ -1,6 +1,6 @@
 # Auto-type
 
-A command-line tool to automatically type annotate functions in python files and projects.
+A command-line tool to automatically type annotate functions in python files and projects.  
 It uses [OpenAI's CODEX API](https://openai.com/blog/openai-codex/) to autocomplete the type information.
 
 ## Usage
@@ -18,7 +18,7 @@ auto-typer.py [-h] [--inplace] [--format FORMAT] path
 ```
 CODEX sometimes misses a few types, so you might need to run the script two or three times with the `--inplace` option.
 
-## Options
+### Options
 
 #### --inplace
 
@@ -42,8 +42,9 @@ auto-typer.py --format "{filename}_typed.{ext}" your_file.py
 # Auto-type your_file.py inplace
 auto-typer.py --inplace your_file.py
 
-# Auto-type all files in path/to/your/project, storing the typed version alongside the project files with the _typed suffix
-auto-typer.py --inplace --format "{filename}_typed.{ext}" path/to/your/project
+# Auto-type all files in path/to/your/project
+# Stores the typed version alongside the project files with the _typed suffix
+auto-typer.py --format "{filename}_typed.{ext}" path/to/your/project
 ```
 
 ## How it works
@@ -56,7 +57,7 @@ This is the rough process for every file:
 - For every function definition:
     - Prepare the file for use with CODEX
         - Extract start of function definition
-        - Split and reorder the file, so that the function definition is at the bottom (thanks to https://github.com/tom-doerr/vim-codex for the idea)
+        - Split and reorder the file, so that the function definition is at the bottom (thanks to https://github.com/tom-doerr/vim_codex for the idea)
         - Add a `from typing import *` import statement
     - Generate the rest of the definition, now with types using the OpenAI CODEX API
     - Replace the function definition with the completion and write to the file (inplace or new file)
