@@ -294,17 +294,9 @@ def complete(prompt: str) -> str:
     )
     completion = response["choices"][0]["text"]
     return completion
-    # return " DummyType,\nvar2: type2) -> returntype:"
 
 
 def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
-    # find all function defitions
-    # for every definition:
-    #   prep_file as prompt
-    #   use as prompt with stoptoken being ':\n' if that works
-    #   replaces the function_range with the completion
-    #   keeps track of line offsets since the completion can be more or less lines
-
     with open(path) as f:
         content = f.read()
 
@@ -336,18 +328,12 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
 
         completion = None
         try:
-            completion = complete(prepped)
-        except openai.error.InvalidRequestError as e:
-            print(colored(f"Completion > max tokens {e}", "red"))
-        if completion is None:
-            print(colored(f"Trying again without comments and empty lines", "red"))
-            prepped = shorten_file_by_removing_comments(prepped)
-            try:
-                completion = complete(prepped)
-            except openai.error.InvalidRequestError:
-                print(colored("Failed to find completion.", "red"))
-                print(colored("Using original function.", "red"))
-                print()
+            completion = try_complete_or_shorten(prepped)
+        except openai.error.InvalidRequestError:
+            print(colored("Failed to find completion.", "red"))
+            print(colored("Using original function.", "red"))
+            print()
+
         if completion is not None:
             print(colored(completion, "green"))
             print()
@@ -366,6 +352,39 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
 
         print()
 
+    # autocompletes typing import
+    try:
+        import_completion = try_complete_or_shorten(content + "\nfrom typing import")
+    except openai.error.InvalidRequestError as e:
+        print(colored(f"Failed to create completion {e}.", "red"))
+        print(colored("Using from typing import * instead", "red"))
+        import_completion = " *"
+
+    # if typing import exists replace it
+    tree = ast.parse(content, path)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            print(ast.dump(node))
+            name = node.names[0].name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom):
+            name = node.module.split(".")[0]
+        else:
+            continue
+        if name == "typing":
+            first_import_line = node.lineno
+            # removing import line
+            lines = lines[: first_import_line - 1] + lines[first_import_line:]
+            break
+
+    if first_import_line is None:
+        lines = ["from typing import", import_completion, "\n"] + lines
+    else:
+        lines = (
+            lines[: first_import_line - 1]
+            + ["from typing import", import_completion, "\n"]
+            + lines[first_import_line - 1 :]
+        )
+
     # write to file depending args
     if inplace:
         with open(path, "w") as f:
@@ -381,6 +400,18 @@ def auto_typing(path, inplace=False, naming_format="{filename}_typed.{ext}"):
         new_path = path.replace(filename, new_filename)
         with open(new_path, "w") as f:
             f.write("".join(lines))
+
+
+def try_complete_or_shorten(prompt):
+    """
+    Tries to complete the prompt using OpenAI's CODEX API
+    If that fails, it shortens the prompt by using `shorten_file_by_removing_comments` and tries again
+    """
+    try:
+        return complete(prompt)
+    except openai.error.InvalidRequestError as e:
+        print(colored(f"Completion > max tokens {e}", "red"))
+        return complete(shorten_file_by_removing_comments(prompt))
 
 
 def main():

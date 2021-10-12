@@ -3,6 +3,8 @@
 A command-line tool to automatically type annotate functions in python files and projects.  
 It uses [OpenAI's CODEX API](https://openai.com/blog/openai-codex/) to autocomplete the type information.
 
+This tool was also written with the help of CODEX, using [vim_codex](https://github.com/tom-doerr/vim_codex).
+
 ## Usage
 
 ### OpenAI API key
@@ -69,6 +71,7 @@ This is the rough process for every file:
 - preserving of newlines and comments below function definition
 - optional inplace editing of a python file
 - optional formatting of the new file
+- adds typing import
 
 ## Future Ideas
 
@@ -96,7 +99,6 @@ If you require one of the listed features, please create an issue to show that t
 - default arguments (`def fun(x=3)`) are not guaranteed to be preserved
 - the type completion is sometimes not optimal
 - completion > max\_tokens, even with shortening the file be removing comments -> cut the file or replace some methods with just their definitions
-- add typing import
 
 ## Contribution
 
