@@ -18,7 +18,7 @@ import openai
 from termcolor import colored
 
 USE_STREAM_FEATURE = True
-MAX_TOKENS_DEFAULT = 64
+MAX_TOKENS_DEFAULT = 128
 
 Typedness = Enum("Typedness", "fully no_args no_return")
 Typedness.colorstr = lambda self: colored(
@@ -246,7 +246,9 @@ def prep_file(
     The resulting combination is returned as string
     """
     lines = content.splitlines(keepends=True)
-    typing_import = ["from typing import *\n"]
+    typing_import = [
+        "from typing import Tuple, Union, Generator, Callable, *\nfrom collections.abc import *"
+    ]
     if first_import_line is None:
         lines = typing_import + lines
     else:
@@ -368,13 +370,13 @@ def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
     if not changed_the_file:
         return
 
-    # autocompletes typing import
-    try:
-        import_completion = try_complete_or_shorten(content + "\nfrom typing import")
-    except openai.error.InvalidRequestError as e:
-        print(colored(f"Failed to create completion {e}.", "red"))
-        print(colored("Using from typing import * instead", "red"))
-        import_completion = " *"
+    # autocompletes typing import (does not work very reliably..)
+    # try:
+    #    import_completion = try_complete_or_shorten(content + "\nfrom typing import")
+    # except openai.error.InvalidRequestError as e:
+    #    print(colored(f"Failed to create completion {e}.", "red"))
+    #    print(colored("Using from typing import * instead", "red"))
+    import_completion = " *"
 
     # if typing import exists replace it
     tree = ast.parse(content, path)

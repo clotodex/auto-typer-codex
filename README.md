@@ -71,21 +71,21 @@ This is the rough process for every file:
 - preserving of newlines and comments below function definition
 - optional inplace editing of a python file
 - optional formatting of the new file
-- adds typing import
+- adds typing import (but very rudimentary)
 
 ## Future Ideas
 
 If you require one of the listed features, please create an issue to show that there is interest for it.
 
-- Add support for type annotations in variable assignments (`x: int = 1`)
-- Add support for type annotations in class definitions (`class Foo(object):`)
-- Add support for type annotations in class methods (`class Foo(object):\n    def __init__(self, x: int):`)
-- Add support for type annotations in special cases (nested functions, lambdas, etc)
+- Add further support for type annotations in
+	- variable assignments (`x: int = 1`)
+	- definitions (`class Foo(object):`)
+	- methods (`class Foo(object):\n    def __init__(self, x: int):`)
+	- special cases (nested functions, lambdas, etc)
 - help CODEX with hard cases of typing like generators
 - self-check if typing was successful
 - run until fully typed
 - code optimizations (RAM or speed)
-- completing/adding the typing import (i.e `from typing import ...`)
 - silent mode
 - pretend mode
 - keep comments of parameters alive using the `tokenize` library
@@ -99,6 +99,8 @@ If you require one of the listed features, please create an issue to show that t
 - default arguments (`def fun(x=3)`) are not guaranteed to be preserved
 - the type completion is sometimes not optimal
 - completion > max\_tokens, even with shortening the file be removing comments -> cut the file or replace some methods with just their definitions
+- max number of tokens is currently fixed to 128 - might need to be extended for long signatures (can maybe be done automatically, otherwise as cli param)
+- auto-generated import is often not accurate -> default is now to always add `from typing import *`, which is not nice
 
 ## Contribution
 
