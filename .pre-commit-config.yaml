@@ -1,0 +1,22 @@
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v4.0.1
+      hooks:
+          - id: check-yaml
+          - id: end-of-file-fixer
+            exclude_types: [markdown]
+          - id: trailing-whitespace
+            exclude_types: [markdown]
+    - repo: https://github.com/asottile/seed-isort-config
+      rev: v2.2.0
+      hooks:
+          - id: seed-isort-config
+    - repo: https://github.com/timothycrosley/isort
+      rev: 5.9.3
+      hooks:
+          - id: isort
+            args: [--line-width=88, --multi-line=3, --trailing-comma]
+    - repo: https://github.com/psf/black
+      rev: 21.9b0
+      hooks:
+          - id: black
