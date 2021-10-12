@@ -6,8 +6,10 @@ Given a python file, this script finds all ranges of line nummbers of function s
 
 import argparse
 import ast
+import io
 import os
 import sys
+import tokenize
 from collections import namedtuple
 from enum import Enum
 from typing import Optional
@@ -53,6 +55,7 @@ def get_typed_function_ranges(file_path: str):
     Returns a boolean list. For every function range, tests if it is fully typed using ast.
     Gets the line number where the function signature starts (def ...)
     and the line number where the signature ends (...:)
+    Uses ast and tokenize to find only lines of the function definition (no empty lines or comment lines)
     """
     with open(file_path) as f:
         source = f.read()
@@ -61,10 +64,46 @@ def get_typed_function_ranges(file_path: str):
 
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.FunctionDef):
+
+            start = node.lineno
+            end = node.body[0].lineno - 1
+            # going through tokenlist in reverse skipping all newlines, comments, etc and stopping when finding ':'
+            fundef_str = "".join(source.splitlines(keepends=True)[start - 1 : end])
+            print(fundef_str)
+            for tokeninfo in reversed(
+                list(tokenize.tokenize(io.BytesIO(fundef_str.encode("utf-8")).readline))
+            ):
+                # finds irrelevant trailing lines and adjusts 'end'
+                if tokeninfo.exact_type == tokenize.COLON:
+                    break
+                elif tokeninfo.type == tokenize.COMMENT:
+                    # comments also are parsed as newline so we wont change 'end' here
+                    pass
+                elif tokeninfo.type == tokenize.NL:
+                    end -= 1
+                elif tokeninfo.type == tokenize.STRING:
+                    print(
+                        colored(
+                            "WARNING parsing docstring - this is weird and should be handled by AST normally - please report",
+                            "red",
+                        )
+                    )
+                    end -= len(tokeninfo.string.splitlines())
+                elif tokeninfo.type == tokenize.NEWLINE:
+                    # this is the newline directly after the colon
+                    pass
+                elif tokeninfo.type == tokenize.ENDMARKER:
+                    # we dont care about this
+                    pass
+                else:
+                    print(
+                        f"found sth else: {tokeninfo.exact_type} - {tokeninfo.string}"
+                    )
+
             yield TypedFunctionRange(
                 get_function_typedness(node, tree),
-                node.lineno,
-                node.body[0].lineno - 1,
+                start,
+                end,
                 node,
             )
 
