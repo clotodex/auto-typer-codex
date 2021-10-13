@@ -16,9 +16,8 @@ You can find your key [here](https://beta.openai.com/account/api-keys).
 ### Running the script
 
 ```bash
-auto-typer.py [-h] [--inplace] [--format FORMAT] path
+auto_typer.py [-h] [--inplace] [--format FORMAT] [--pretend] [--max-tries MAX_TRIES] path
 ```
-CODEX sometimes misses a few types, so you might need to run the script two or three times with the `--inplace` option.
 
 ### Options
 
@@ -37,6 +36,15 @@ The default format is `{filename}_typed.{ext}`, which will create a new file lik
 ```bash
 auto-typer.py --format "{filename}_typed.{ext}" your_file.py
 ```
+
+#### --pretend
+
+With this argument, the script will not write to any file.
+
+#### --max-tries
+
+CODEX sometimes misses a few types, so by default it will rerun itself `3` times or less if nothing is changing.
+This can be changed with this option. `-1` makes it run as long as it is changing the file (This **should** not lead to an infinite loop).
 
 ## Examples
 
@@ -72,6 +80,9 @@ This is the rough process for every file:
 - optional inplace editing of a python file
 - optional formatting of the new file
 - adds typing import (but very rudimentary)
+- run until fully typed
+- pretend mode
+- more specific typing import (from typing import Generator, Union, \*)
 
 ## Future Ideas
 
@@ -83,15 +94,11 @@ If you require one of the listed features, please create an issue to show that t
 	- methods (`class Foo(object):\n    def __init__(self, x: int):`)
 	- special cases (nested functions, lambdas, etc)
 - help CODEX with hard cases of typing like generators
-- self-check if typing was successful
-- run until fully typed
+- varify typing - assert all variables are still there and defaults are added
 - code optimizations (RAM or speed)
 - silent mode
-- pretend mode
 - keep comments of parameters alive using the `tokenize` library
-- optimize type completions (nervously looking at `Generator`), ideas:
-    - more specific typing import (from typing import Generator, \*)
-    - comment before function defintion with typing help or encouranging sentence like "perfectly typed function"
+- optimize type completions e.g. with a comment before function defintion with typing help or encouranging sentence like "perfectly typed function"
 - option for overriding the format file (currently default)
 
 ## Known problems
@@ -129,6 +136,10 @@ The tests are written using [pytest](http://doc.pytest.org/en/latest/).
 pip install pytest
 pytest
 ```
+
+## Alternatives
+
+For a static type inferrer you can also check [MonkeyType](https://github.com/Instagram/MonkeyType).
 
 ## License
 

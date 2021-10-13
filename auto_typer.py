@@ -156,7 +156,7 @@ def all_args_have_type(function_node: ast.FunctionDef, tree: ast.AST) -> bool:
     return True
 
 
-def print_function_range_and_def(path: str, function_range: TypedFunctionRange):
+def print_function_range_and_def(function_range: TypedFunctionRange):
     """
     Prints a function definition in a nice format (typed if it has type annotations).
     def fun(var):
@@ -167,8 +167,6 @@ def print_function_range_and_def(path: str, function_range: TypedFunctionRange):
     print(
         function_range.typedness.colorstr()
         + " ~ "
-        + os.path.basename(path)
-        + ": "
         + (
             str(function_range.start) + "-" + str(function_range.end)
             if function_range.start != function_range.end
@@ -219,15 +217,34 @@ def subscript_type_to_string(subscript: ast.Subscript) -> str:
 def prep_function_def_from_node(function_node: ast.FunctionDef) -> str:
     """
     Returns a string representation of the function definition in this format:
-        def functionname(firstarg:
+        def functionname(firstarg_without_type:
     """
-    return "def " + function_node.name + "(" + function_node.args.args[0].arg + ":"
+    arg_without_type = 0
+    for arg in function_node.args.args:
+        if arg.annotation is None:
+            break
+        arg_without_type += 1
+
+    print(function_node.args.defaults)
+    # returns the definition with all args until arg_without_type with type annotation and then the arg_without_type:
+    return (
+        "def "
+        + function_node.name
+        + "("
+        + ", ".join(
+            [ast.unparse(arg) for arg in function_node.args.args[:arg_without_type]]
+        )
+        + ", "
+        + function_node.args.args[arg_without_type].arg
+        + ":"
+    )
 
 
 def prep_function_def_from_node_for_return(function_node: ast.FunctionDef) -> str:
     """
     Returns a string representation of the function definition with an empty return type
     """
+
     return "def " + function_node.name + "(" + ast.unparse(function_node.args) + ") ->"
 
 
@@ -302,8 +319,9 @@ def complete(prompt: str) -> str:
     return completion
 
 
-def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
-
+def auto_typing(
+    path: str, inplace: bool, naming_format: str, max_tries: int = 3, pretend=False
+) -> None:
     # prints a beautiful divider with the file name
     print(colored("-" * len(os.path.basename(path)), "blue"))
     print(colored(os.path.basename(path), "blue"))
@@ -315,12 +333,88 @@ def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
 
     first_import_line = find_first_import(path)
 
+    changed = False
+    for _ in range(max_tries):
+        lines, changes = auto_typing_internal(
+            content, first_import_line, inplace, naming_format
+        )
+        content = "".join(lines)
+        if changes > 0:
+            changed = True
+
+    if not changed:
+        return
+
+    # autocompletes typing import (does not work very reliably..)
+    # try:
+    #    import_completion = try_complete_or_shorten(content + "\nfrom typing import")
+    # except openai.error.InvalidRequestError as e:
+    #    print(colored(f"Failed to create completion {e}.", "red"))
+    #    print(colored("Using from typing import * instead", "red"))
+    import_completion = " *"
+
+    # if typing import exists replace it
+    tree = ast.parse(content)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            name = node.names[0].name.split(".")[0]
+        elif isinstance(node, ast.ImportFrom):
+            name = node.module.split(".")[0]
+        else:
+            continue
+        if name == "typing":
+            first_import_line = node.lineno
+            # removing import line
+            lines = lines[: first_import_line - 1] + lines[first_import_line:]
+            break
+
+    if first_import_line is None:
+        lines = ["from typing import", import_completion, "\n"] + lines
+    else:
+        lines = (
+            lines[: first_import_line - 1]
+            + ["from typing import", import_completion, "\n"]
+            + lines[first_import_line - 1 :]
+        )
+    print(
+        "Added import '"
+        + colored(f"from typing import{import_completion}", "green")
+        + "'"
+    )
+
+    # write to file depending args
+    if inplace:
+        with open(path, "w") as f:
+            if pretend:
+                print("Pretending to write file inplace.")
+                return
+            f.write("".join(lines))
+    else:
+        # apply format only to the file, not the folder
+        filename = os.path.basename(path)
+        # applies format (only uses ext if it exists)
+        splits = filename.split(".")
+        new_filename = naming_format.format(
+            filename=splits[0], ext=splits[1] if len(splits) > 1 else ""
+        )
+        new_path = path.replace(filename, new_filename)
+        if pretend:
+            print(f"Pretending to write to file {new_path}.")
+            return
+        with open(new_path, "w") as f:
+            f.write("".join(lines))
+
+
+def auto_typing_internal(
+    content: str, first_import_line: Optional[int], inplace: bool, naming_format: str
+) -> Tuple[str, int]:
+
     lines = content.splitlines(keepends=True)
     offset = 0
 
-    changed_the_file = False
+    changes = 0
     for function_range in get_typed_function_ranges(content):
-        print_function_range_and_def(path, function_range)
+        print_function_range_and_def(function_range)
         if function_range.typedness not in [Typedness.no_return, Typedness.no_args]:
             print(colored("skip", "grey"))
             continue
@@ -365,63 +459,9 @@ def auto_typing(path: str, inplace: bool, naming_format: str) -> None:
             )
 
         print()
-        changed_the_file = True
+        changes += 1
 
-    if not changed_the_file:
-        return
-
-    # autocompletes typing import (does not work very reliably..)
-    # try:
-    #    import_completion = try_complete_or_shorten(content + "\nfrom typing import")
-    # except openai.error.InvalidRequestError as e:
-    #    print(colored(f"Failed to create completion {e}.", "red"))
-    #    print(colored("Using from typing import * instead", "red"))
-    import_completion = " *"
-
-    # if typing import exists replace it
-    tree = ast.parse(content, path)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            name = node.names[0].name.split(".")[0]
-        elif isinstance(node, ast.ImportFrom):
-            name = node.module.split(".")[0]
-        else:
-            continue
-        if name == "typing":
-            first_import_line = node.lineno
-            # removing import line
-            lines = lines[: first_import_line - 1] + lines[first_import_line:]
-            break
-
-    if first_import_line is None:
-        lines = ["from typing import", import_completion, "\n"] + lines
-    else:
-        lines = (
-            lines[: first_import_line - 1]
-            + ["from typing import", import_completion, "\n"]
-            + lines[first_import_line - 1 :]
-        )
-    print(
-        "Added import '"
-        + colored(f"from typing import{import_completion}", "green")
-        + "'"
-    )
-
-    # write to file depending args
-    if inplace:
-        with open(path, "w") as f:
-            f.write("".join(lines))
-    else:
-        # apply format only to the file, not the folder
-        filename = os.path.basename(path)
-        # applies format (only uses ext if it exists)
-        splits = filename.split(".")
-        new_filename = naming_format.format(
-            filename=splits[0], ext=splits[1] if len(splits) > 1 else ""
-        )
-        new_path = path.replace(filename, new_filename)
-        with open(new_path, "w") as f:
-            f.write("".join(lines))
+    return lines, changes
 
 
 def try_complete_or_shorten(prompt: str) -> str:
@@ -470,6 +510,17 @@ def main():
         default="{filename}_typed.{ext}",
         help="format for the new file (default: {filename}_typed.{ext})",
     )
+    parser.add_argument(
+        "--pretend",
+        action="store_true",
+        help="pretend to edit the file instead of actually editing it",
+    )
+    parser.add_argument(
+        "--max-tries",
+        type=int,
+        default=3,
+        help="max tries for auto-typing (default: 3)",
+    )
     args = parser.parse_args()
 
     if os.path.isdir(args.path):
@@ -477,9 +528,11 @@ def main():
             for file in files:
                 if file.endswith(".py"):
                     path = os.path.join(root, file)
-                    auto_typing(path, args.inplace, args.format)
+                    auto_typing(
+                        path, args.inplace, args.format, args.max_tries, args.pretend
+                    )
     else:
-        auto_typing(args.path, args.inplace, args.format)
+        auto_typing(args.path, args.inplace, args.format, args.max_tries, args.pretend)
 
 
 if __name__ == "__main__":
